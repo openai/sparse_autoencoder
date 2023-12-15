@@ -1,0 +1,18 @@
+[project]
+name = "sparse_autoencoder"
+description="Sparse autoencoder for GPT2"
+version = "0.1"
+authors = [{name = "OpenAI"}]
+dependencies = [
+    "blobfile == 2.0.2",
+    "torch == 2.1.0",
+    "transformer_lens == 1.9.1",
+]
+readme = "README.md"
+
+[build-system]
+requires = ["setuptools>=64.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["sparse_autoencoder*"]
