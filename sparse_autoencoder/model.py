@@ -1,8 +1,16 @@
-from typing import Callable
+from typing import Callable, Any
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+
+def LN(x: torch.Tensor, eps: float = 1e-5) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    mu = x.mean(dim=-1, keepdim=True)
+    x = x - mu
+    std = x.std(dim=-1, keepdim=True)
+    x = x / (std + eps)
+    return x, mu, std
 
 
 class Autoencoder(nn.Module):
@@ -14,7 +22,8 @@ class Autoencoder(nn.Module):
     """
 
     def __init__(
-        self, n_latents: int, n_inputs: int, activation: Callable = nn.ReLU(), tied: bool = False
+        self, n_latents: int, n_inputs: int, activation: Callable = nn.ReLU(), tied: bool = False,
+        normalize: bool = False
     ) -> None:
         """
         :param n_latents: dimension of the autoencoder latent
@@ -32,6 +41,7 @@ class Autoencoder(nn.Module):
             self.decoder: nn.Linear | TiedTranspose = TiedTranspose(self.encoder)
         else:
             self.decoder = nn.Linear(n_latents, n_inputs, bias=False)
+        self.normalize = normalize
 
         self.stats_last_nonzero: torch.Tensor
         self.latents_activation_frequency: torch.Tensor
@@ -55,19 +65,30 @@ class Autoencoder(nn.Module):
         )
         return latents_pre_act
 
-    def encode(self, x: torch.Tensor) -> torch.Tensor:
+    def preprocess(self, x: torch.Tensor) -> tuple[torch.Tensor, dict[str, Any]]:
+        if not self.normalize:
+            return x, dict()
+        x, mu, std = LN(x)
+        return x, dict(mu=mu, std=std)
+
+    def encode(self, x: torch.Tensor) -> tuple[torch.Tensor, dict[str, Any]]:
         """
         :param x: input data (shape: [batch, n_inputs])
         :return: autoencoder latents (shape: [batch, n_latents])
         """
-        return self.activation(self.encode_pre_act(x))
+        x, info = self.preprocess(x)
+        return self.activation(self.encode_pre_act(x)), info
 
-    def decode(self, latents: torch.Tensor) -> torch.Tensor:
+    def decode(self, latents: torch.Tensor, info: dict[str, Any] | None = None) -> torch.Tensor:
         """
         :param latents: autoencoder latents (shape: [batch, n_latents])
         :return: reconstructed data (shape: [batch, n_inputs])
         """
-        return self.decoder(latents) + self.pre_bias
+        ret = self.decoder(latents) + self.pre_bias
+        if self.normalize:
+            assert info is not None
+            ret = ret * info["std"] + info["mu"]
+        return ret
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
@@ -76,9 +97,10 @@ class Autoencoder(nn.Module):
                   autoencoder latents (shape: [batch, n_latents])
                   reconstructed data (shape: [batch, n_inputs])
         """
+        x, info = self.preprocess(x)
         latents_pre_act = self.encode_pre_act(x)
         latents = self.activation(latents_pre_act)
-        recons = self.decode(latents)
+        recons = self.decode(latents, info)
 
         # set all indices of self.stats_last_nonzero where (latents != 0) to 0
         self.stats_last_nonzero *= (latents == 0).all(dim=0).long()
@@ -91,21 +113,22 @@ class Autoencoder(nn.Module):
         cls, state_dict: dict[str, torch.Tensor], strict: bool = True
     ) -> "Autoencoder":
         n_latents, d_model = state_dict["encoder.weight"].shape
-        autoencoder = cls(n_latents, d_model)
 
         # Retrieve activation
         activation_class_name = state_dict.pop("activation", "ReLU")
         activation_class = ACTIVATIONS_CLASSES.get(activation_class_name, nn.ReLU)
+        normalize = activation_class_name == "TopK"  # NOTE: hacky way to determine if normalization is enabled
         activation_state_dict = state_dict.pop("activation_state_dict", {})
         if hasattr(activation_class, "from_state_dict"):
-            autoencoder.activation = activation_class.from_state_dict(
+            activation = activation_class.from_state_dict(
                 activation_state_dict, strict=strict
             )
         else:
-            autoencoder.activation = activation_class()
-            if hasattr(autoencoder.activation, "load_state_dict"):
-                autoencoder.activation.load_state_dict(activation_state_dict, strict=strict)
+            activation = activation_class()
+            if hasattr(activation, "load_state_dict"):
+                activation.load_state_dict(activation_state_dict, strict=strict)
 
+        autoencoder = cls(n_latents, d_model, activation=activation, normalize=normalize)
         # Load remaining state dict
         autoencoder.load_state_dict(state_dict, strict=strict)
         return autoencoder
