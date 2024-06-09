@@ -19,9 +19,9 @@ export default function Welcome() {
     {feature: {atom: 25 * GPT4_ATOMS_PER_SHARD + 8, autoencoder: AUTOENCODER_FAMILIES['v5_latelayer_postmlp'].get_ae({})},
      label: "police reports, especially child safety", description: "safety incidents especially related to children"},
     {feature: {atom: 9 * GPT4_ATOMS_PER_SHARD + 44, autoencoder: AUTOENCODER_FAMILIES['v5_latelayer_postmlp'].get_ae({})},
-      label: "price increases", description: "ends of phrases describing commodity/equity price increases"},
+      label: "price changes", description: "ends of phrases describing commodity/equity price changes"},
     {feature: {atom: 17 * GPT4_ATOMS_PER_SHARD + 33, autoencoder: AUTOENCODER_FAMILIES['v5_latelayer_postmlp'].get_ae({})},
-      label: "ratification (multilingual)", description: "ends of phrases describing commodity/equity price increases"},
+      label: "ratification (multilingual)", description: "ratification (multilingual)"},
     {feature: {atom: 3 * GPT4_ATOMS_PER_SHARD + 421, autoencoder: AUTOENCODER_FAMILIES['v5_latelayer_postmlp'].get_ae({})},
       label: "would [...]", description: "conditionals (things that would be true)"},
     {feature: {atom: 63 * GPT4_ATOMS_PER_SHARD + 8, autoencoder: AUTOENCODER_FAMILIES['v5_latelayer_postmlp'].get_ae({})},
@@ -56,6 +56,9 @@ export default function Welcome() {
     {feature: {atom: 733, autoencoder: AUTOENCODER_FAMILIES['v5_l8_postmlp'].get_ae({
       num_features: '32768', num_active_features: '8'
     })}, label: "Patrick/Patty surname predictor", description: "Predicts surnames after Patrick"},
+    {feature: {atom: 64464, autoencoder: AUTOENCODER_FAMILIES['v5_l8_postmlp'].get_ae({
+      num_features: '131072', num_active_features: '32'
+    })}, label: "things that are unknown", description: "things that are unknown"},
     {feature: {atom: 56907, autoencoder: AUTOENCODER_FAMILIES['v5_l8_postmlp'].get_ae({ // similar to 33248
       num_features: '131072', num_active_features: '32'
     })}, label: "words in quotes", description: "predicts words in quotes"},
@@ -80,7 +83,13 @@ export default function Welcome() {
     {heading: 'Safety relevant features (found via attribution methods)', heading_type: 'h3', feature: null, label: ''},
     {feature: {atom: 64840, autoencoder: AUTOENCODER_FAMILIES['v5_l8_postmlp'].get_ae({
       num_features: '131072', num_active_features: '32'
-    })}, label: "profanity", description: "activates in order to output profanity"},
+    })}, label: "profanity (1)", description: "activates in order to output profanity"},
+    {feature: {atom: 104813, autoencoder: AUTOENCODER_FAMILIES['v5_l8_postmlp'].get_ae({
+      num_features: '131072', num_active_features: '32'
+    })}, label: "profanity (2)", description: "activates on profanity"},
+    {feature: {atom: 101090, autoencoder: AUTOENCODER_FAMILIES['v5_l8_postmlp'].get_ae({
+      num_features: '131072', num_active_features: '32'
+    })}, label: "profanity (3)", description: "activates on 'fucking' (profane, not sexual contexts)"},
     {feature: {atom: 72185, autoencoder: AUTOENCODER_FAMILIES['v5_l8_postmlp'].get_ae({
       num_features: '131072', num_active_features: '32'
     })}, label: "erotic content", description: "erotic content"},
@@ -101,7 +110,7 @@ export default function Welcome() {
 
   return (
     <div className="flex flex-col" style={{'padding': '100px'}}>
-      <h1 className="text-2xl font-bold mb-4">Welcome!  This is a viewer for sparse autoencoders features trained in <a href="todo">this paper</a> </h1>
+      <h1 className="text-2xl font-bold mb-4">Welcome!  This is a viewer for sparse autoencoders features trained in <a href="https://cdn.openai.com/papers/sparse-autoencoders.pdf">this paper</a> </h1>
       <h1>Pick a feature:</h1>
       <FeatureSelect
         init_feature={feature}
