@@ -15,9 +15,8 @@ pip install git+https://github.com/openai/sparse_autoencoder.git
 See [sae-viewer](./sae-viewer/README.md) to see the visualizer code, hosted publicly [here](https://openaipublic.blob.core.windows.net/sparse-autoencoder/sae-viewer/index.html).
 
 See [model.py](./sparse_autoencoder/model.py) for details on the autoencoder model architecture.
+See [model.py](./sparse_autoencoder/train.py) for autoencoder training code.
 See [paths.py](./sparse_autoencoder/paths.py) for more details on the available autoencoders.
-
-NOTE: we also hope to release training code soon.  stay tuned!
 
 ### Example usage
 
