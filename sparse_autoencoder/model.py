@@ -117,7 +117,9 @@ class Autoencoder(nn.Module):
         # Retrieve activation
         activation_class_name = state_dict.pop("activation", "ReLU")
         activation_class = ACTIVATIONS_CLASSES.get(activation_class_name, nn.ReLU)
-        normalize = activation_class_name == "TopK"  # NOTE: hacky way to determine if normalization is enabled
+        # Older state dicts (e.g. the published checkpoints) don't store `normalize`; for those,
+        # fall back to the hacky rule that normalization is enabled iff the activation is TopK.
+        normalize = state_dict.pop("normalize", activation_class_name == "TopK")
         activation_state_dict = state_dict.pop("activation_state_dict", {})
         if hasattr(activation_class, "from_state_dict"):
             activation = activation_class.from_state_dict(
@@ -135,7 +137,16 @@ class Autoencoder(nn.Module):
 
     def state_dict(self, destination=None, prefix="", keep_vars=False):
         sd = super().state_dict(destination, prefix, keep_vars)
+        # The recursive call above also stores the activation's own entries under
+        # "activation.<key>" (e.g. TopK's "activation.k"). They are saved again in
+        # "activation_state_dict" below, and `from_state_dict` doesn't expect them, so drop them.
+        for key in [k for k in sd if k.startswith(prefix + "activation.")]:
+            del sd[key]
         sd[prefix + "activation"] = self.activation.__class__.__name__
+        # Only store `normalize` when `from_state_dict` couldn't infer it from the activation, so
+        # that every other state dict keeps the format older versions of `from_state_dict` load.
+        if self.normalize != (self.activation.__class__.__name__ == "TopK"):
+            sd[prefix + "normalize"] = self.normalize
         if hasattr(self.activation, "state_dict"):
             sd[prefix + "activation_state_dict"] = self.activation.state_dict()
         return sd
